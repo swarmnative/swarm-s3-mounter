@@ -1,0 +1,146 @@
+name: publish
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'  # nightly
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME_GHCR: ghcr.io/${{ github.repository }}
+  IMAGE_NAME_DH: docker.io/${{ github.repository }}
+  RCLONE_IMAGE: rclone/rclone:latest
+
+jobs:
+  go-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Go mod download
+        run: go mod download
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=3m
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -v ./...
+
+  build-and-push:
+    needs: go-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub (optional)
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute tags/labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE_NAME_GHCR }}
+            ${{ env.IMAGE_NAME_DH }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
+
+      - name: Compute dependency fingerprint (nightly only)
+        id: fp
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          set -euo pipefail
+          get_digest() { docker buildx imagetools inspect "$1" | awk '/Digest:/ {print $2; exit}'; }
+          ALPINE_DIGEST=$(get_digest alpine:3.20)
+          GOLANG_DIGEST=$(get_digest golang:1.22-alpine)
+          RCLONE_DIGEST=$(get_digest "${RCLONE_IMAGE}")
+          HAPROXY_VER=$(docker run --rm alpine:3.20 sh -c 'apk update >/dev/null 2>&1; apk info -a haproxy | head -1' | tr -d '\r')
+          FP_SRC="alpine=${ALPINE_DIGEST}|golang=${GOLANG_DIGEST}|rclone=${RCLONE_DIGEST}|haproxy=${HAPROXY_VER}"
+          FP_SHA=$(printf "%s" "$FP_SRC" | sha256sum | awk '{print $1}')
+          echo "source=$FP_SRC" >> $GITHUB_OUTPUT
+          echo "sha=$FP_SHA" >> $GITHUB_OUTPUT
+
+      - name: Check existing fingerprint tag (GHCR)
+        id: check
+        if: ${{ github.event_name == 'schedule' }}
+        continue-on-error: true
+        run: |
+          docker manifest inspect ${{ env.IMAGE_NAME_GHCR }}:fp-${{ steps.fp.outputs.sha }} >/dev/null 2>&1
+
+      - name: Skip if no changes (nightly)
+        if: ${{ github.event_name == 'schedule' && steps.check.outcome == 'success' }}
+        run: |
+          echo "Fingerprint unchanged: ${{ steps.fp.outputs.sha }}. Skipping build."
+          exit 0
+
+      - name: Build and Push (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}${{ github.event_name == 'schedule' && format("\n{0}:fp-{1}\n{2}:fp-{1}", env.IMAGE_NAME_GHCR, steps.fp.outputs.sha, env.IMAGE_NAME_DH) || '' }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.swarmnative.dep.fingerprint=${{ steps.fp.outputs.sha }}
+            org.swarmnative.dep.source=${{ steps.fp.outputs.source }}
+          build-args: |
+            RCLONE_IMAGE=${{ env.RCLONE_IMAGE }}
+
+      - name: SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          artifact-name: sbom.spdx.json
+          format: spdx-json
+      - name: Sign image (Cosign)
+        if: ${{ github.event_name != 'pull_request' && secrets.COSIGN_KEY && secrets.COSIGN_PASSWORD }}
+        uses: sigstore/cosign-installer@v3
+      - name: Cosign Sign
+        if: ${{ github.event_name != 'pull_request' && secrets.COSIGN_KEY && secrets.COSIGN_PASSWORD }}
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          echo "${{ secrets.COSIGN_KEY }}" > cosign.key
+          for t in ${{ steps.meta.outputs.tags }}; do
+            cosign sign --key cosign.key "$t" || true
+          done
+
+      - name: Create GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
