@@ -11,7 +11,7 @@ github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HbrPZ
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbQhoyR+0sJdS7tQH5CjU=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cVCmz2m8+ITJwIVhe/LhuCw/G0SscE3ekOj1ZQSU=
-github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPKfq9DSb0M7pG8RKB0R5WkJf3LA=
+github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+xlvQv6O8gR4q+U0UOQfPw=
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
 golang.org/x/net v0.25.0 h1:d/OCCo0DgfsCZP0vg6ZHfRPs00UZ4Ewt55h6ynffQ/g=
