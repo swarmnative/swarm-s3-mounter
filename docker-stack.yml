@@ -1,0 +1,68 @@
+version: "3.8"
+
+networks:
+  internal_net:
+    driver: overlay
+    internal: true
+
+secrets:
+  s3_access_key:
+    external: true
+  s3_secret_key:
+    external: true
+
+services:
+  swarm-s3-mounter:
+    image: ghcr.io/swarmnative/swarm-s3-mounter:latest
+    networks: [internal_net]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - type: bind
+        source: /mnt/s3
+        target: /mnt/s3
+        bind:
+          propagation: rshared
+    secrets:
+      - s3_access_key
+      - s3_secret_key
+    environment:
+      - S3_MOUNTER_S3_ENDPOINTS=http://s3.local:9000
+      - S3_MOUNTER_S3_ENDPOINT=http://s3.local:9000
+      - S3_MOUNTER_S3_PROVIDER=
+      - S3_MOUNTER_RCLONE_REMOTE=S3:your-bucket
+      - S3_MOUNTER_RCLONE_ARGS=--vfs-cache-mode=writes --dir-cache-time=12h
+      - S3_MOUNTER_MOUNTPOINT=/mnt/s3
+      - S3_MOUNTER_S3_ACCESS_KEY_FILE=/run/secrets/s3_access_key
+      - S3_MOUNTER_S3_SECRET_KEY_FILE=/run/secrets/s3_secret_key
+      - S3_MOUNTER_ENABLE_PROXY=false
+      # 可选：将 helper 使用的镜像设置为本镜像，避免外部依赖
+      - S3_MOUNTER_NSENTER_HELPER_IMAGE=ghcr.io/swarmnative/swarm-s3-mounter:latest
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.labels.mount_s3 == true
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 64M
+      restart_policy:
+        condition: any
+      update_config:
+        order: start-first
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
