@@ -188,7 +188,7 @@ func (c *Controller) ensureMounter() error {
     args.Add("name", name)
     ctx, cancel := c.timeoutCtx(10 * time.Second)
     defer cancel()
-    conts, err := c.cli.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: args})
+    conts, err := c.cli.ContainerList(ctx, container.ListOptions{All: true, Filters: args})
     if err != nil {
         return err
     }
@@ -202,19 +202,19 @@ func (c *Controller) ensureMounter() error {
         if err == nil {
             if desiredImageID != "" && inspect.Image != desiredImageID {
                 rctx, rcancel := c.timeoutCtx(10 * time.Second)
-                _ = c.cli.ContainerRemove(rctx, id, types.ContainerRemoveOptions{Force: true})
+                _ = c.cli.ContainerRemove(rctx, id, container.RemoveOptions{Force: true})
                 rcancel()
             } else if inspect.State != nil && inspect.State.Running {
                 return nil
             } else {
                 sctx, scancel := c.timeoutCtx(10 * time.Second)
-                if err := c.cli.ContainerStart(sctx, id, types.ContainerStartOptions{}); err == nil {
+                if err := c.cli.ContainerStart(sctx, id, container.StartOptions{}); err == nil {
                     scancel()
                     return nil
                 }
                 scancel()
                 r2ctx, r2cancel := c.timeoutCtx(10 * time.Second)
-                _ = c.cli.ContainerRemove(r2ctx, id, types.ContainerRemoveOptions{Force: true})
+                _ = c.cli.ContainerRemove(r2ctx, id, container.RemoveOptions{Force: true})
                 r2cancel()
             }
         }
@@ -264,7 +264,9 @@ func (c *Controller) ensureMounter() error {
                 fmt.Sprintf("%s:%s:rshared", c.cfg.Mountpoint, c.cfg.Mountpoint),
             },
             SecurityOpt: []string{"apparmor=unconfined"},
-            Devices:     []container.DeviceMapping{{PathOnHost: "/dev/fuse", PathInContainer: "/dev/fuse", CgroupPermissions: "mrw"}},
+            Resources: container.Resources{
+                Devices: []container.DeviceMapping{{PathOnHost: "/dev/fuse", PathInContainer: "/dev/fuse", CgroupPermissions: "mrw"}},
+            },
         },
         netCfg,
         nil,
@@ -275,7 +277,7 @@ func (c *Controller) ensureMounter() error {
         return fmt.Errorf("create mounter: %w", err)
     }
     sctx2, scancel2 := c.timeoutCtx(15 * time.Second)
-    if err := c.cli.ContainerStart(sctx2, resp.ID, types.ContainerStartOptions{}); err != nil {
+    if err := c.cli.ContainerStart(sctx2, resp.ID, container.StartOptions{}); err != nil {
         scancel2()
         return fmt.Errorf("start mounter: %w", err)
     }
@@ -345,7 +347,7 @@ func (c *Controller) ensureRShared() error {
     sh := fmt.Sprintf("nsenter -t 1 -m -- mount --make-rshared %s || mount --make-rshared %s", c.cfg.Mountpoint, c.cfg.Mountpoint)
     cont, err := c.cli.ContainerCreate(c.ctx,
         &container.Config{Image: c.cfg.HelperImage, Cmd: []string{"sh", "-c", sh}},
-        &container.HostConfig{Privileged: true, PIDMode: "host", Binds: []string{fmt.Sprintf("%s:%s", c.cfg.Mountpoint, c.cfg.Mountpoint)}},
+        &container.HostConfig{Privileged: true, PidMode: "host", Binds: []string{fmt.Sprintf("%s:%s", c.cfg.Mountpoint, c.cfg.Mountpoint)}},
         &network.NetworkingConfig{}, nil, c.helperName("rshared-helper"))
     if err != nil {
         return err
@@ -364,7 +366,7 @@ func (c *Controller) checkAndHealMount() error {
     sh := fmt.Sprintf("(nsenter -t 1 -m -- fusermount -uz %[1]s || true); (nsenter -t 1 -m -- umount -l %[1]s || true)", c.cfg.Mountpoint)
     cont, err := c.cli.ContainerCreate(c.ctx,
         &container.Config{Image: c.cfg.HelperImage, Cmd: []string{"sh", "-c", sh}},
-        &container.HostConfig{Privileged: true, PIDMode: "host", Binds: []string{fmt.Sprintf("%s:%s", c.cfg.Mountpoint, c.cfg.Mountpoint)}},
+        &container.HostConfig{Privileged: true, PidMode: "host", Binds: []string{fmt.Sprintf("%s:%s", c.cfg.Mountpoint, c.cfg.Mountpoint)}},
         &network.NetworkingConfig{}, nil, c.helperName("umount-helper"))
     if err != nil {
         return err
@@ -398,7 +400,7 @@ func (c *Controller) logStatus() {
     name := c.mounterName()
     args := filters.NewArgs()
     args.Add("name", name)
-    conts, err := c.cli.ContainerList(c.ctx, types.ContainerListOptions{All: true, Filters: args})
+    conts, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: true, Filters: args})
     running := false
     if err == nil && len(conts) > 0 {
         id := conts[0].ID
