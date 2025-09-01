@@ -2,7 +2,6 @@ package controller
 
 import (
     "context"
-    "errors"
     "fmt"
     "io"
     "io/fs"
@@ -12,7 +11,6 @@ import (
     "regexp"
     "strconv"
     "strings"
-    "sort"
     "time"
 
     "github.com/docker/docker/api/types"
@@ -223,8 +221,8 @@ func (c *Controller) ensureMounter() error {
     }
 
     // read secrets
-    accessKey, _ := os.ReadFile(c.cfg.AccessKeyFile)
-    secretKey, _ := os.ReadFile(c.cfg.SecretKeyFile)
+    _, _ = os.ReadFile(c.cfg.AccessKeyFile)
+    _, _ = os.ReadFile(c.cfg.SecretKeyFile)
 
     env := c.buildRcloneEnv()
     
@@ -601,7 +599,7 @@ func (c *Controller) ensureRemotePaths(s claimSpec) error {
     if c.cfg.AutoCreatePrefix && strings.TrimSpace(s.prefix) != "" {
         remotePath := fmt.Sprintf("S3:%s/%s", s.bucket, strings.Trim(s.prefix, "/"))
         if err := c.runRcloneCmd([]string{"mkdir", remotePath}); err != nil {
-            log.Printf("mkdir prefix %s: %v", remotePath, err)
+            slog.Warn("mkdir prefix", "path", remotePath, "error", err)
         }
     }
     return nil
