@@ -34,6 +34,9 @@ jobs:
           go clean -modcache
       - name: Go mod download
         run: go mod download
+      - name: Warm up deps for lint
+        run: |
+          go list -deps ./... >/dev/null
       - name: Lint (golangci-lint)
         uses: golangci/golangci-lint-action@v6
         with:
