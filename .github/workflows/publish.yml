@@ -32,6 +32,11 @@ jobs:
           go env -w GOPROXY=https://proxy.golang.org,direct
           go env -w GOSUMDB=sum.golang.org
           go clean -modcache
+      - name: Regenerate go.sum (ephemeral)
+        run: |
+          rm -f go.sum || true
+          go mod tidy
+          go mod download
       - name: Go mod download
         run: go mod download
       - name: Lint (golangci-lint)
