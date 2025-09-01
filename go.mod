@@ -6,5 +6,8 @@ require (
     github.com/docker/docker v26.1.3+incompatible
     github.com/docker/go-connections v0.4.0
     github.com/docker/go-units v0.5.0
+    github.com/opencontainers/image-spec v1.1.0
 )
+
+replace github.com/moby/docker-image-spec => github.com/opencontainers/image-spec v1.1.0
 
