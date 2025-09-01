@@ -13,7 +13,7 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/gogo/protobuf v1.3.2 h1:Ov1cVCmz2m8+ITJwIVhe/LhuCw/G0SscE3ekOj1ZQSU=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPKfq9DSb0M7pG8RKB0R5WkJf3LA=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+xlvQv6O8gR4q+U0UOQfPw=
-github.com/distribution/reference v0.6.0/go.mod h1:YDMPH1Qw1d0+1zkbyxgH/8J+6TfP2zBy+CUJ7TPYwvY=
+github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
 golang.org/x/net v0.25.0 h1:d/OCCo0DgfsCZP0vg6ZHfRPs00UZ4Ewt55h6ynffQ/g=
 golang.org/x/net v0.25.0/go.mod h1:JkAGAh7GEvH74S6FOH42FLoz7WfLxudAq5/0wbEx1xM=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 h1:4yuW+2V2u+3f1TsEkwV0C78MiDJLvy6iDQTvjHN8DtE=
