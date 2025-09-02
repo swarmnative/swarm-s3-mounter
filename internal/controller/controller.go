@@ -352,8 +352,8 @@ func (c *Controller) ensureRShared() error {
     if err != nil {
         return err
     }
-    defer func() { _ = c.cli.ContainerRemove(c.ctx, cont.ID, types.ContainerRemoveOptions{Force: true}) }()
-    _ = c.cli.ContainerStart(c.ctx, cont.ID, types.ContainerStartOptions{})
+    defer func() { _ = c.cli.ContainerRemove(c.ctx, cont.ID, container.RemoveOptions{Force: true}) }()
+    _ = c.cli.ContainerStart(c.ctx, cont.ID, container.StartOptions{})
     time.Sleep(1 * time.Second)
     return nil
 }
@@ -371,8 +371,8 @@ func (c *Controller) checkAndHealMount() error {
     if err != nil {
         return err
     }
-    defer func() { _ = c.cli.ContainerRemove(c.ctx, cont.ID, types.ContainerRemoveOptions{Force: true}) }()
-    _ = c.cli.ContainerStart(c.ctx, cont.ID, types.ContainerStartOptions{})
+    defer func() { _ = c.cli.ContainerRemove(c.ctx, cont.ID, container.RemoveOptions{Force: true}) }()
+    _ = c.cli.ContainerStart(c.ctx, cont.ID, container.StartOptions{})
     time.Sleep(1 * time.Second)
     return nil
 }
@@ -509,7 +509,7 @@ func (c *Controller) provisionClaims() error {
     if err := testRW(c.cfg.Mountpoint); err != nil {
         return err
     }
-    conts, err := c.cli.ContainerList(c.ctx, types.ContainerListOptions{All: false})
+    conts, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: false})
     if err != nil {
         return err
     }
@@ -617,13 +617,16 @@ func (c *Controller) runRcloneCmd(cmd []string) error {
     if err != nil {
         return err
     }
-    defer func() { _ = c.cli.ContainerRemove(context.Background(), cont.ID, types.ContainerRemoveOptions{Force: true}) }()
-    if err := c.cli.ContainerStart(c.ctx, cont.ID, types.ContainerStartOptions{}); err != nil {
+    defer func() { _ = c.cli.ContainerRemove(context.Background(), cont.ID, container.RemoveOptions{Force: true}) }()
+    if err := c.cli.ContainerStart(c.ctx, cont.ID, container.StartOptions{}); err != nil {
         return err
     }
     // wait for completion
-    _, errC := c.cli.ContainerWait(c.ctx, cont.ID, container.WaitConditionNotRunning)
-    return errC
+    _, errCh := c.cli.ContainerWait(c.ctx, cont.ID, container.WaitConditionNotRunning)
+    if err := <-errCh; err != nil {
+        return err
+    }
+    return nil
 }
 
 // cleanupOrphanedMounters removes exited/created rclone mounter containers that
@@ -634,7 +637,7 @@ func (c *Controller) cleanupOrphanedMounters() error {
     args.Add("name", "rclone-mounter-")
     args.Add("label", "swarmnative.mounter=managed")
     // Include non-running containers
-    conts, err := c.cli.ContainerList(c.ctx, types.ContainerListOptions{All: true, Filters: args})
+    conts, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: true, Filters: args})
     if err != nil { return err }
     removed := 0
     for _, ct := range conts {
@@ -685,7 +688,7 @@ func (c *Controller) Cleanup() {
     conts, err := c.cli.ContainerList(c.ctx, types.ContainerListOptions{All: true, Filters: args})
     if err == nil && len(conts) > 0 {
         id := conts[0].ID
-        _ = c.cli.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{Force: true})
+        _ = c.cli.ContainerRemove(context.Background(), id, container.RemoveOptions{Force: true})
     }
 }
 
