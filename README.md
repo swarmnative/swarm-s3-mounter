@@ -1,6 +1,4 @@
-```diff
-+ English | [简体中文](README.zh.md)
-```
+English | [简体中文](README.zh.md)
 
 # swarm-s3-mounter
 
@@ -11,7 +9,7 @@
 ![Image Size](https://img.shields.io/docker/image-size/swarmnative/swarm-s3-mounter/latest)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/swarmnative/swarm-s3-mounter)
 ![Go Report](https://goreportcard.com/badge/github.com/swarmnative/swarm-s3-mounter)
-![Scorecard](https://api.securityscorecards.dev/projects/github.com/swarmnative/swarm-s3-mounter/badge)
+[![OpenSSF Scorecard](https://img.shields.io/badge/OpenSSF%20Scorecard-pending-lightgrey)](https://api.securityscorecards.dev/projects/github.com/swarmnative/swarm-s3-mounter)
 ![Last Commit](https://img.shields.io/github/last-commit/swarmnative/swarm-s3-mounter)
 ![Issues](https://img.shields.io/github/issues/swarmnative/swarm-s3-mounter)
 ![PRs](https://img.shields.io/github/issues-pr/swarmnative/swarm-s3-mounter)
