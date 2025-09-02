@@ -10,7 +10,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/storage-ops ./cmd/storage-ops
+    go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org && \
+    go mod tidy && \
+    go mod download && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=mod -o /out/storage-ops ./cmd/storage-ops
 
 FROM alpine:3.20
 RUN apk add --no-cache haproxy supervisor curl ca-certificates util-linux \
