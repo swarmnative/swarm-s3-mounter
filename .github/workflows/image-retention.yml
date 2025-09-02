@@ -10,7 +10,8 @@ permissions:
   packages: write
 
 env:
-  ORG: swarmnative
+  OWNER: ${{ github.repository_owner }}
+  OWNER_TYPE: ${{ github.event.repository.owner.type }} # 'Organization' or 'User'
   PACKAGE: swarm-s3-mounter
   RETENTION_DAYS: '30'
   FP_RETENTION_DAYS: '14'
@@ -24,7 +25,7 @@ jobs:
     steps:
       - name: Show policy
         run: |
-          echo "Org: $ORG, Package: $PACKAGE"
+          echo "Owner: $OWNER ($OWNER_TYPE), Package: $PACKAGE"
           echo "Keep regex: $KEEP_TAG_RE"
           echo "Retention: $RETENTION_DAYS d, fp: $FP_RETENTION_DAYS d, untagged: $UNTAGGED_DAYS d"
           echo "Dry run: $DRY_RUN"
@@ -38,8 +39,10 @@ jobs:
 
           api_list() {
             local page=$1
+            local base
+            if [[ "${OWNER_TYPE}" == "Organization" ]]; then base="/orgs/${OWNER}"; else base="/users/${OWNER}"; fi
             gh api -H "Accept: application/vnd.github+json" \
-              "/orgs/${ORG}/packages/container/${PACKAGE}/versions?per_page=100&page=${page}"
+              "${base}/packages/container/${PACKAGE}/versions?per_page=100&page=${page}"
           }
 
           now=$(date -u +%s)
@@ -91,7 +94,7 @@ jobs:
   prune-dockerhub:
     runs-on: ubuntu-latest
     env:
-      DH_NAMESPACE: swarmnative
+      DH_NAMESPACE: ${{ github.repository_owner }}
       DH_REPO: swarm-s3-mounter
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
