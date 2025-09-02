@@ -643,7 +643,7 @@ func (c *Controller) cleanupOrphanedMounters() error {
     for _, ct := range conts {
         if ct.State == "running" || ct.State == "restarting" { continue }
         // best-effort remove
-        _ = c.cli.ContainerRemove(c.ctx, ct.ID, types.ContainerRemoveOptions{Force: true})
+        _ = c.cli.ContainerRemove(c.ctx, ct.ID, container.RemoveOptions{Force: true})
         removed++
     }
     if removed > 0 { c.orphanCleanupTotal += int64(removed) }
@@ -685,7 +685,7 @@ func (c *Controller) Cleanup() {
     // stop & remove mounter if exists
     args := filters.NewArgs()
     args.Add("name", c.mounterName())
-    conts, err := c.cli.ContainerList(c.ctx, types.ContainerListOptions{All: true, Filters: args})
+    conts, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: true, Filters: args})
     if err == nil && len(conts) > 0 {
         id := conts[0].ID
         _ = c.cli.ContainerRemove(context.Background(), id, container.RemoveOptions{Force: true})
