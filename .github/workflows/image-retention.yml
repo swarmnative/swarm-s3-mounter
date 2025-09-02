@@ -133,7 +133,8 @@ jobs:
           fi
 
           ns="${DH_NAMESPACE:-}"
-          if [[ -z "$ns" ]]; then ns="$GITHUB_REPOSITORY_OWNER"; fi
+          # 默认使用 swarmnative 作为 Docker Hub 命名空间；如需覆盖请设置 DOCKERHUB_NAMESPACE Secret
+          if [[ -z "$ns" ]]; then ns="swarmnative"; fi
           echo "Resolved Docker Hub namespace: $ns"
 
           now=$(date -u +%s)
