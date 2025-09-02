@@ -44,6 +44,10 @@ type Config struct {
     ProxyNetwork      string
     LabelPrefix       string
     LabelStrict       bool
+    // Optional image retention controls (no-op if unused)
+    ImageCleanupEnabled bool
+    ImageRetentionDays  int
+    ImageKeepRecent     int
 }
 
 type Controller struct {
