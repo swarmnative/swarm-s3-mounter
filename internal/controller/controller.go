@@ -17,6 +17,7 @@ import (
     "github.com/docker/docker/api/types/container"
     "github.com/docker/docker/api/types/filters"
     "github.com/docker/docker/api/types/network"
+    "github.com/docker/docker/api/types/image"
     "github.com/docker/docker/client"
 )
 
@@ -294,7 +295,7 @@ func (c *Controller) pullMounterImageIfDue() error {
         return nil
     }
     ictx, icancel := c.timeoutCtx(60 * time.Second)
-    rc, err := c.cli.ImagePull(ictx, c.cfg.MounterImage, types.ImagePullOptions{})
+    rc, err := c.cli.ImagePull(ictx, c.cfg.MounterImage, image.PullOptions{})
     if err != nil {
         icancel()
         return err
@@ -314,7 +315,7 @@ func (c *Controller) pullMounterImageIfChanged() error {
     current := c.cachedImageID()
     // Pull new
     ipctx, ipcancel := c.timeoutCtx(60 * time.Second)
-    rc, err := c.cli.ImagePull(ipctx, c.cfg.MounterImage, types.ImagePullOptions{})
+    rc, err := c.cli.ImagePull(ipctx, c.cfg.MounterImage, image.PullOptions{})
     if err != nil {
         ipcancel()
         return err
@@ -420,7 +421,7 @@ func (c *Controller) logStatus() {
 
 // --- Declarative volume (prefix) provisioning via service/container labels ---
 
-const labelPrefix = "s3.mounter.swarmnative.io/"
+// const labelPrefix = "s3.mounter.swarmnative.io/" // deprecated: no longer used
 
 // parseLabels applies STANDARDS label parsing: default no-prefix keys (s3.*)
 // plus optional prefix (c.cfg.LabelPrefix). When LabelPrefix is empty, both
