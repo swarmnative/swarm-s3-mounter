@@ -94,7 +94,7 @@ jobs:
   prune-dockerhub:
     runs-on: ubuntu-latest
     env:
-      DH_NAMESPACE: ${{ github.repository_owner }}
+      DH_NAMESPACE: ${{ secrets.DOCKERHUB_NAMESPACE }}
       DH_REPO: swarm-s3-mounter
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -132,12 +132,23 @@ jobs:
             echo "Docker Hub login failed" >&2; exit 1;
           fi
 
+          ns="${DH_NAMESPACE:-}"
+          if [[ -z "$ns" ]]; then ns="$GITHUB_REPOSITORY_OWNER"; fi
+          echo "Resolved Docker Hub namespace: $ns"
+
           now=$(date -u +%s)
           deleted=0
           page=1
           while :; do
-            url="https://hub.docker.com/v2/repositories/${DH_NAMESPACE}/${DH_REPO}/tags/?page_size=100&page=${page}"
-            data=$(curl -fsSL -H "Authorization: JWT ${jwt}" "$url") || break
+            url="https://hub.docker.com/v2/repositories/${ns}/${DH_REPO}/tags/?page_size=100&page=${page}"
+            http=$(curl -s -o /tmp/dh.json -w "%{http_code}" -H "Authorization: JWT ${jwt}" "$url" || true)
+            if [[ "$http" == "404" ]]; then
+              echo "Docker Hub repo not found: ${ns}/${DH_REPO}" >&2; exit 0;
+            fi
+            if [[ "$http" != "200" ]]; then
+              echo "Docker Hub API error HTTP $http for $url" >&2; exit 1;
+            fi
+            data=$(cat /tmp/dh.json)
             count=$(jq '.results | length' <<<"$data")
             [[ "$count" == "0" ]] && break
 
