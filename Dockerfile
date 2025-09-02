@@ -4,13 +4,11 @@ FROM golang:1.22-alpine AS builder
 WORKDIR /src
 COPY go.mod ./
 COPY go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod download || true
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go env -w GOPROXY=https://proxy.golang.org,direct GOSUMDB=sum.golang.org && \
+    rm -f go.sum || true && \
     go mod tidy && \
     go mod download && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=mod -o /out/storage-ops ./cmd/storage-ops
