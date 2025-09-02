@@ -783,13 +783,17 @@ func ValidateConfig(cfg Config) ValidationResult {
     if strings.TrimSpace(cfg.MounterImage) == "" {
         errs = append(errs, "mounter image is required")
     }
-    if cfg.PollInterval <= 0 {
-        errs = append(errs, "poll interval must be > 0")
+    // Treat zero PollInterval as "use default" and do not error
+    if cfg.PollInterval < 0 {
+        errs = append(errs, "poll interval must be >= 0")
     }
-    switch cfg.MounterUpdateMode {
-    case "never", "periodic", "on_change":
-    default:
-        errs = append(errs, "mounter update mode must be one of never|periodic|on_change")
+    // Allow empty MounterUpdateMode to imply default "never"; only validate when non-empty
+    if strings.TrimSpace(cfg.MounterUpdateMode) != "" {
+        switch cfg.MounterUpdateMode {
+        case "never", "periodic", "on_change":
+        default:
+            errs = append(errs, "mounter update mode must be one of never|periodic|on_change")
+        }
     }
     if _, err := os.Stat(cfg.AccessKeyFile); err != nil {
         warns = append(warns, fmt.Sprintf("access key file not readable: %v", err))
