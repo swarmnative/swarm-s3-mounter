@@ -18,15 +18,23 @@ if [ "$ENABLE_PROXY" = "true" ]; then
   H_HEALTH_PATH=${S3_MOUNTER_HA_HEALTH_PATH:-"/minio/health/ready"}
   # Build multiple local service templates if comma-separated
   LOC_LINES=""
-  IFS=',' read -r -a _locals <<< "$H_LOCAL_SERVICE"
-  for svc in "${_locals[@]}"; do
-    svc_trim=$(echo "$svc" | sed 's/^\s*//;s/\s*$//')
+  OLD_IFS="$IFS"
+  IFS=','
+  set -- $H_LOCAL_SERVICE
+  IFS="$OLD_IFS"
+  for svc in "$@"; do
+    svc_trim=$(echo "$svc" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     [ -z "$svc_trim" ] && continue
-    LOC_LINES="$LOC_LINES\n  server-template loc 1-8 tasks.${svc_trim}:${H_PORT} resolvers docker resolve-prefer ipv4 init-addr none weight 100"
+    if [ -z "$LOC_LINES" ]; then
+      LOC_LINES="  server-template loc 1-8 tasks.${svc_trim}:${H_PORT} resolvers docker resolve-prefer ipv4 init-addr none weight 100"
+    else
+      LOC_LINES="$LOC_LINES
+  server-template loc 1-8 tasks.${svc_trim}:${H_PORT} resolvers docker resolve-prefer ipv4 init-addr none weight 100"
+    fi
   done
   RMT_LINE=""
   if [ -n "$H_REMOTE_SERVICE" ]; then
-    RMT_LINE="\n  server-template rmt 1-8 tasks.${H_REMOTE_SERVICE}:${H_PORT} resolvers docker resolve-prefer ipv4 init-addr none backup weight 10"
+    RMT_LINE="  server-template rmt 1-8 tasks.${H_REMOTE_SERVICE}:${H_PORT} resolvers docker resolve-prefer ipv4 init-addr none backup weight 10"
   fi
   mkdir -p "$HAPROXY_ETC"
   cat > "${HAPROXY_ETC}/haproxy.cfg" <<EOF
